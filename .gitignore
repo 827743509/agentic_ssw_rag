@@ -1,0 +1,10 @@
+### IntelliJ IDEA ###
+.idea
+
+__pycache__/
+*.pyc
+node_modules/
+dist/
+agentic_ssw_rag_backend/data/uploads/
+agentic_ssw_rag_backend/data/tmp/
+agentic_ssw_rag_backend/data/documents.json

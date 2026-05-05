@@ -19,6 +19,13 @@ class AppSettings(BaseSettings):
     milvus_collection: str = Field(default="document_kb", alias="MILVUS_COLLECTION")
     milvus_overwrite: bool = Field(default=False, alias="MILVUS_OVERWRITE")
 
+    # MinIO
+    minio_endpoint: str = Field(default="http://localhost:9000", alias="MINIO_ENDPOINT")
+    minio_access_key: str = Field(default="minioadmin", alias="MINIO_ACCESS_KEY")
+    minio_secret_key: str = Field(default="minioadmin", alias="MINIO_SECRET_KEY")
+    minio_bucket: str = Field(default="user-uploads", alias="MINIO_BUCKET")
+    minio_secure: Optional[bool] = Field(default=None, alias="MINIO_SECURE")
+
     # Embedding
     embed_model_name: str = Field(default="Qwen/Qwen3-Embedding-4B", alias="EMBED_MODEL_NAME")
     embed_dim: int = Field(default=2560, alias="EMBED_DIM")
@@ -52,6 +59,15 @@ class AppSettings(BaseSettings):
     langsmith_api_key: str = Field(default="dev-secret", alias="LANGSMITH_API_KEY")
     api_key: str = Field(default="dev-secret", alias="API_KEY")
     enable_api_key: bool = Field(default=False, alias="ENABLE_API_KEY")
+
+    # Redis
+    redis_host: str = Field(default="localhost", alias="REDIS_HOST")
+    redis_port: int = Field(default=6379, alias="REDIS_PORT")
+    redis_db: int = Field(default=0, alias="REDIS_DB")
+    redis_password: Optional[str] = Field(default=None, alias="REDIS_PASSWORD")
+    redis_session_key_prefix: str = Field(default="agent:context", alias="REDIS_SESSION_KEY_PREFIX")
+    redis_session_ttl_seconds: int = Field(default=0, alias="REDIS_SESSION_TTL_SECONDS")
+
     # NEO4J
     neo4j_url: str = Field(default="bolt://localhost:7687", alias="NEO4J_URL")
     neo4j_username: str = Field(default="neo4j", alias="NEO4J_USERNAME")

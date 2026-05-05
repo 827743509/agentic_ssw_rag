@@ -44,6 +44,59 @@ def load_documents(data_dir: str):
     return documents
 
 
+def load_document_file(file_path: str, document_id: str, original_filename: str | None = None):
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"file not found: {path.resolve()}")
+    if path.suffix.lower() not in DEFAULT_EXTS:
+        raise ValueError(f"unsupported file type: {path.suffix}")
+
+    documents = SimpleDirectoryReader(
+        input_files=[str(path)],
+    ).load_data()
+
+    for doc in documents:
+        doc.id_ = document_id
+        doc.metadata = {
+            **(doc.metadata or {}),
+            "document_id": document_id,
+            "file_name": original_filename or path.name,
+            "source_path": str(path),
+        }
+
+    return documents
+
+
+def ingest_file(file_path: str, document_id: str, original_filename: str | None = None) -> int:
+    settings = get_settings()
+    embed_model = build_embed_model()
+
+    Settings.embed_model = embed_model
+    Settings.llm = None
+
+    documents = load_document_file(
+        file_path=file_path,
+        document_id=document_id,
+        original_filename=original_filename,
+    )
+
+    vector_store = build_vector_store(overwrite=False)
+
+    pipeline = IngestionPipeline(
+        transformations=[
+            SentenceSplitter(
+                chunk_size=settings.chunk_size,
+                chunk_overlap=settings.chunk_overlap,
+            ),
+            embed_model,
+        ],
+        vector_store=vector_store,
+    )
+
+    nodes = pipeline.run(documents=documents, show_progress=True)
+    return len(nodes)
+
+
 def ingest_directory(data_dir: str, overwrite: bool = False) -> int:
     settings = get_settings()
     embed_model = build_embed_model()

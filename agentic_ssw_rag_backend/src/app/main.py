@@ -1,17 +1,16 @@
-import os
+
 from datetime import date
 
 from fastapi import Depends, FastAPI, APIRouter
-from llama_index.observability.otel import LlamaIndexOpenTelemetry
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from prometheus_client import  Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
-from llama_index.core.workflow import Context
 from app.agent import build_agent, build_graph_agent, build_agent_workflow
+from app.BizException import register_exception_handlers
 from app.config import get_settings
+from app.documents import router as documents_router
 from app.models import ChatRequest, QueryRequest, QueryResponse, SourceChunk
 from app.rag import query_knowledge_base
 from app.security import verify_api_key
-from fastapi import Response
+from app.session_store import close_redis_client, load_agent_context, save_agent_context
+
 
 router = APIRouter(
     prefix="/agent",
@@ -20,8 +19,9 @@ router = APIRouter(
 settings=get_settings()
 def create_app() -> FastAPI:
     app = FastAPI()
-    build_agent_workflow()
+    register_exception_handlers(app)
     app.include_router(router)
+    app.include_router(documents_router)
 
     return app
 
@@ -29,8 +29,9 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-# 简单内存会话。。
-_AGENT_CONTEXTS: dict[str, Context] = {}
+@app.on_event("shutdown")
+async def shutdown_event():
+    await close_redis_client()
 
 
 
@@ -63,18 +64,15 @@ async def agent_chat(req: ChatRequest):
     # 根据租户 / 权限构建 agent。
     # 注意：如果每次请求都 build agent，
     agent = build_agent(
-        access_tags=req.access_tags,
+        access_tags=tuple(req.access_tags),
         top_k=req.top_k,
     )
 
-    ctx_key = f"{req.session_id}"
-    ctx = _AGENT_CONTEXTS.get(ctx_key)
-    if ctx is None:
-        ctx = Context(agent)
-        _AGENT_CONTEXTS[ctx_key] = ctx
+    ctx = await load_agent_context(agent, "chat", req.session_id)
 
     handler = agent.run(req.question, ctx=ctx)
     response = await handler
+    await save_agent_context("chat", req.session_id, ctx)
 
 
     return QueryResponse(answer=str(response))
@@ -82,22 +80,19 @@ async def agent_chat(req: ChatRequest):
 
 
 @app.post("/agent/graph", response_model=QueryResponse)
-async def agent_chat(req: ChatRequest):
+async def agent_graph(req: ChatRequest):
     # 根据租户 / 权限构建 agent。
     # 注意：如果每次请求都 build agent，会重复加载模型；生产环境建议做 agent / query_engine 缓存。
     agent = build_graph_agent()
 
-    ctx_key = f"{req.session_id}"
-    ctx = _AGENT_CONTEXTS.get(ctx_key)
-    if ctx is None:
-        ctx = Context(agent)
-        _AGENT_CONTEXTS[ctx_key] = ctx
+    ctx = await load_agent_context(agent, "graph", req.session_id)
     message = f"""
     当前日期是：{date.today().isoformat()}
     用户问题：{req.question}
     """
     handler = agent.run(message, ctx=ctx)
     response = await handler
+    await save_agent_context("graph", req.session_id, ctx)
 
 
     return QueryResponse(answer=str(response))
@@ -109,11 +104,7 @@ async def agent_search(req: ChatRequest):
     # 注意：如果每次请求都 build agent，会重复加载模型；生产环境建议做 agent / query_engine 缓存。
     workflow = build_agent_workflow()
 
-    ctx_key = f"{req.session_id}"
-    ctx = _AGENT_CONTEXTS.get(ctx_key)
-    if ctx is None:
-        ctx = Context(workflow)
-        _AGENT_CONTEXTS[ctx_key] = ctx
+    ctx = await load_agent_context(workflow, "search", req.session_id)
     message = f"""
     当前日期是：{date.today().isoformat()}
     用户问题：{req.question}
@@ -121,5 +112,6 @@ async def agent_search(req: ChatRequest):
     response = await workflow.run(
         user_msg=message, ctx=ctx
     )
+    await save_agent_context("search", req.session_id, ctx)
 
     return QueryResponse(answer=str(response))
