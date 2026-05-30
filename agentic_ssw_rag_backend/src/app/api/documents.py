@@ -9,22 +9,21 @@ from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from app.config import BASE_DIR
-from app.ingest import DEFAULT_EXTS, ingest_file
-from app.object_storage import (
+from app.core.config import BASE_DIR
+from app.db.object_storage import (
     delete_file_object,
     file_object_exists,
     stream_file_object,
     upload_file_object,
 )
-from app.rag import build_index
-from app.security import verify_api_key
-from app.vector_store import build_vector_store
+from app.db.vector_store import build_vector_store
+from app.utils.ingest import DEFAULT_EXTS, ingest_file
+from app.utils.rag import build_index
 
 
 DATA_DIR = BASE_DIR / "data"
@@ -58,7 +57,6 @@ class DocumentDeleteResponse(BaseModel):
 router = APIRouter(
     prefix="/documents",
     tags=["documents"],
-    dependencies=[Depends(verify_api_key)],
 )
 
 

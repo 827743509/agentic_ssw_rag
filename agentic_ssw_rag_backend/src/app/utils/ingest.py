@@ -6,9 +6,9 @@ from llama_index.core import SimpleDirectoryReader, Settings
 from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.node_parser import SentenceSplitter
 
-from app.config import get_settings
-from app.embedding import build_embed_model
-from app.vector_store import build_vector_store
+from app.core.config import get_settings
+from app.db.vector_store import build_vector_store
+from app.utils.embedding import build_embed_model
 
 
 DEFAULT_EXTS = [

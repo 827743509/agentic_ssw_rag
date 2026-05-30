@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
-from .config import get_settings
+from app.core.config import get_settings
 
 
 @lru_cache(maxsize=1)

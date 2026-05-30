@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-BASE_DIR = Path(__file__).resolve().parents[2]
+BASE_DIR = Path(__file__).resolve().parents[3]
 APP_ENV = os.getenv("APP_ENV", "dev")
 class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=( 
@@ -38,7 +38,7 @@ class AppSettings(BaseSettings):
     dashscope_basic_url: Optional[str] = Field(default=None, alias="DASHSCOPE_BASIC_URL")
     dashscope_max_tokens: Optional[str] = Field(default=None, alias="DASHSCOPE_MAX_TOKENS")
     qwen_llm_model: str = Field(default="qwen-max", alias="QWEN_LLM_MODEL")
-    qwen3_reranker_model: str = Field(default=None, alias="QWEN3_RERANKER_MODEL")
+    qwen3_reranker_model: Optional[str] = Field(default=None, alias="QWEN3_RERANKER_MODEL")
 
 
     kimi_llm_model: Optional[str] = Field(default=None, alias="KIMI_LLM_MODEL")
@@ -57,8 +57,6 @@ class AppSettings(BaseSettings):
 
     # API
     langsmith_api_key: str = Field(default="dev-secret", alias="LANGSMITH_API_KEY")
-    api_key: str = Field(default="dev-secret", alias="API_KEY")
-    enable_api_key: bool = Field(default=False, alias="ENABLE_API_KEY")
 
     # Redis
     redis_host: str = Field(default="localhost", alias="REDIS_HOST")
@@ -76,6 +74,6 @@ class AppSettings(BaseSettings):
 
 
 
-@lru_cache
+@lru_cache(maxsize=1)
 def get_settings() -> AppSettings:
     return AppSettings()

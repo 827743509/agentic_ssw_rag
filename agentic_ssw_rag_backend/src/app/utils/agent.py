@@ -4,9 +4,9 @@ from llama_index.core.agent import AgentWorkflow
 from llama_index.core.agent.workflow import ReActAgent
 from llama_index.core.tools import QueryEngineTool
 
-from .Neo4jCompanyRepository import child_company_tool, company_jobs_tool
-from .llm import build_llm, build_moonshot_llm
-from .rag import build_query_engine
+from app.db.neo4j_company_repository import child_company_tool, company_jobs_tool
+from app.utils.llm import build_llm, build_moonshot_llm
+from app.utils.rag import build_query_engine
 
 
 AGENT_SYSTEM_PROMPT = """你是技术文档 Agentic RAG 助手。

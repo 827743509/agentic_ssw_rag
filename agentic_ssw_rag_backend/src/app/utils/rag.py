@@ -9,11 +9,11 @@ from llama_index.core.vector_stores import (
     FilterOperator,
 )
 
-from .config import get_settings
-from .embedding import build_embed_model
-from .llm import build_llm
-from .qwen_rerank_postprocessor import Qwen3RerankPostprocessor
-from .vector_store import build_vector_store
+from app.core.config import get_settings
+from app.db.vector_store import build_vector_store
+from app.utils.embedding import build_embed_model
+from app.utils.llm import build_llm
+# from app.utils.qwen_rerank_postprocessor import Qwen3RerankPostprocessor
 
 
 QA_TEMPLATE = PromptTemplate(

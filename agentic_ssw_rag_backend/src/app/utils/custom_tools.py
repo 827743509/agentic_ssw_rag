@@ -16,5 +16,4 @@
 
 def query_erp_order(order_no: str) -> str:
     """根据订单号查询 ERP 订单信息。"""
-    # TODO: 在这里接企业 ERP API
     return f"ERP order {order_no}: TODO"

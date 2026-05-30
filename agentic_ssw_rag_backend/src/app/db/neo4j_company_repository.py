@@ -8,8 +8,7 @@ from llama_index.core.tools import FunctionTool
 from llama_index.core.agent import ReActAgent
 
 
-from app.config import get_settings
-from app.llm import build_llm, build_moonshot_llm
+from app.core.config import get_settings
 
 settings=get_settings()
 
@@ -116,7 +115,6 @@ company_jobs_tool = FunctionTool.from_defaults(
     name="query_company_jobs",
     description="根据公司名称(非必填),职位发布地区,公司所在地,职位发布时间查询该公司发布的岗位信息。",
 )
-llm = build_moonshot_llm()
 
 
 

@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from minio import Minio
 from minio.error import S3Error
 
-from app.config import get_settings
+from app.core.config import get_settings
 
 
 @lru_cache(maxsize=1)

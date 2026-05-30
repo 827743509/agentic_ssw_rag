@@ -1,7 +1,7 @@
 from llama_index.vector_stores.milvus import MilvusVectorStore
 from llama_index.vector_stores.milvus.utils import BM25BuiltInFunction
 
-from .config import get_settings
+from app.core.config import get_settings
 
 
 def build_vector_store(overwrite: bool | None = None) -> MilvusVectorStore:

@@ -7,7 +7,7 @@ from sentence_transformers import CrossEncoder
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.schema import NodeWithScore, QueryBundle, MetadataMode
 
-from app.config import get_settings
+from app.core.config import get_settings
 
 settings=get_settings();
 @lru_cache(maxsize=1)

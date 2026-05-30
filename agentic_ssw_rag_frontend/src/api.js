@@ -4,13 +4,10 @@ function buildUrl(path) {
   return `${API_BASE_URL}${path}`
 }
 
-function authHeaders(apiKey) {
-  return apiKey ? { 'x-api-key': apiKey } : {}
-}
-
 async function parseResponse(response) {
   const text = await response.text()
   let data = null
+
   try {
     data = text ? JSON.parse(text) : null
   } catch {
@@ -20,7 +17,7 @@ async function parseResponse(response) {
   if (!response.ok) {
     const detail = data?.detail
     if (Array.isArray(detail)) {
-      throw new Error(detail.map((item) => item.msg).join('；') || '请求失败')
+      throw new Error(detail.map((item) => item.msg).join('，') || '请求失败')
     }
     throw new Error(detail || data?.message || `请求失败：${response.status}`)
   }
@@ -28,29 +25,25 @@ async function parseResponse(response) {
   return data
 }
 
-export async function listDocuments(apiKey) {
-  const response = await fetch(buildUrl('/documents'), {
-    headers: authHeaders(apiKey),
-  })
+export async function listDocuments() {
+  const response = await fetch(buildUrl('/documents'))
   return parseResponse(response)
 }
 
-export async function uploadDocument(file, apiKey) {
+export async function uploadDocument(file) {
   const formData = new FormData()
   formData.append('file', file)
 
   const response = await fetch(buildUrl('/documents/upload'), {
     method: 'POST',
-    headers: authHeaders(apiKey),
     body: formData,
   })
   return parseResponse(response)
 }
 
-export async function deleteDocument(documentId, apiKey) {
+export async function deleteDocument(documentId) {
   const response = await fetch(buildUrl(`/documents/${documentId}`), {
     method: 'DELETE',
-    headers: authHeaders(apiKey),
   })
   return parseResponse(response)
 }
@@ -66,10 +59,8 @@ function getDownloadFileName(response, fallbackName) {
   return asciiMatch?.[1] || fallbackName
 }
 
-export async function downloadDocument(documentId, apiKey, fallbackName = 'download') {
-  const response = await fetch(buildUrl(`/documents/${documentId}/download`), {
-    headers: authHeaders(apiKey),
-  })
+export async function downloadDocument(documentId, fallbackName = 'download') {
+  const response = await fetch(buildUrl(`/documents/${documentId}/download`))
 
   if (!response.ok) {
     return parseResponse(response)
@@ -87,14 +78,45 @@ export async function downloadDocument(documentId, apiKey, fallbackName = 'downl
   return true
 }
 
-export async function chatWithAgent(payload, apiKey) {
+export async function streamChatWithAgent(payload, onChunk) {
   const response = await fetch(buildUrl('/agent/chat'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...authHeaders(apiKey),
     },
     body: JSON.stringify(payload),
   })
-  return parseResponse(response)
+
+  if (!response.ok) {
+    return parseResponse(response)
+  }
+
+  if (!response.body) {
+    const text = await response.text()
+    onChunk?.(text)
+    return { answer: text }
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let answer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    const chunk = decoder.decode(value, { stream: true })
+    if (!chunk) continue
+
+    answer += chunk
+    onChunk?.(chunk, answer)
+  }
+
+  const tail = decoder.decode()
+  if (tail) {
+    answer += tail
+    onChunk?.(tail, answer)
+  }
+
+  return { answer }
 }
