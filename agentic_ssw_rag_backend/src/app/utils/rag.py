@@ -1,18 +1,15 @@
 from functools import lru_cache
-from typing import List, Optional
+from typing import Generator, List, Optional
 
 from llama_index.core import Settings, VectorStoreIndex
 from llama_index.core.prompts import PromptTemplate
-from llama_index.core.vector_stores import (
-    MetadataFilter,
-    MetadataFilters,
-    FilterOperator,
-)
+from llama_index.core.vector_stores import MetadataFilters
 
 from app.core.config import get_settings
 from app.db.vector_store import build_vector_store
 from app.utils.embedding import build_embed_model
-from app.utils.llm import build_llm
+from app.utils.llm import build_llm, build_moonshot_llm
+
 # from app.utils.qwen_rerank_postprocessor import Qwen3RerankPostprocessor
 
 
@@ -72,6 +69,7 @@ def build_metadata_filters(
 def build_query_engine(
     access_tags: Optional[List[str]] = None,
     top_k: Optional[int] = None,
+    streaming: bool = False,
 ):
     settings = get_settings()
     index = build_index()
@@ -80,13 +78,14 @@ def build_query_engine(
     #     batch_size=4,
     # )
     return index.as_query_engine(
-        llm=build_llm(),
+        llm=build_moonshot_llm(),
         similarity_top_k=top_k or settings.similarity_top_k,
         # node_postprocessors=[reranker],
         filters=build_metadata_filters( access_tags=access_tags),
         vector_store_query_mode="hybrid",
         response_mode="compact",
         text_qa_template=QA_TEMPLATE,
+        streaming=streaming,
     )
 
 
@@ -116,3 +115,37 @@ def query_knowledge_base(
         "answer": str(response),
         "sources": sources,
     }
+
+
+def stream_knowledge_base(
+    question: str,
+    access_tags: Optional[List[str]] = None,
+    top_k: Optional[int] = None,
+) -> Generator[str, None, None]:
+    try:
+        query_engine = build_query_engine(
+            access_tags=access_tags or [],
+            top_k=top_k,
+            streaming=True,
+        )
+        response = query_engine.query(question)
+        response_gen = getattr(response, "response_gen", None)
+        if response_gen is None:
+            text = str(response)
+            if text:
+                yield text
+            return
+
+        emitted = False
+        for chunk in response_gen:
+            if not chunk:
+                continue
+            emitted = True
+            yield chunk
+
+        if not emitted:
+            text = str(response)
+            if text:
+                yield text
+    except Exception as exc:
+        yield f"\n\n请求失败：{exc}"

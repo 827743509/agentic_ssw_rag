@@ -5,13 +5,26 @@ const STORAGE_KEYS = {
   topK: 'rag.topK',
 }
 
+const DEFAULT_TOP_K = 5
+const LEGACY_DEFAULT_TOP_K = '20'
+
+function readTopK() {
+  const storedTopK = localStorage.getItem(STORAGE_KEYS.topK)
+  if (!storedTopK || storedTopK === LEGACY_DEFAULT_TOP_K) {
+    return DEFAULT_TOP_K
+  }
+
+  const parsedTopK = Number(storedTopK)
+  return Number.isFinite(parsedTopK) && parsedTopK > 0 ? parsedTopK : DEFAULT_TOP_K
+}
+
 export function useRagSettings() {
   const accessTagsText = ref(localStorage.getItem(STORAGE_KEYS.accessTags) || '')
-  const topK = ref(Number(localStorage.getItem(STORAGE_KEYS.topK) || 20))
+  const topK = ref(readTopK())
 
   function persistSettings() {
     localStorage.setItem(STORAGE_KEYS.accessTags, accessTagsText.value.trim())
-    localStorage.setItem(STORAGE_KEYS.topK, String(topK.value || 20))
+    localStorage.setItem(STORAGE_KEYS.topK, String(topK.value || DEFAULT_TOP_K))
   }
 
   function parseAccessTags() {

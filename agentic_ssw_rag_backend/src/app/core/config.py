@@ -41,9 +41,9 @@ class AppSettings(BaseSettings):
     qwen3_reranker_model: Optional[str] = Field(default=None, alias="QWEN3_RERANKER_MODEL")
 
 
-    kimi_llm_model: Optional[str] = Field(default=None, alias="KIMI_LLM_MODEL")
+    kimi_llm_model: str = Field(default="moonshot-v1-8k", alias="KIMI_LLM_MODEL")
     kimi_api_key: Optional[str] = Field(default=None, alias="KIMI_API_KEY")
-    kimi_base_url: Optional[str] = Field(default=None, alias="KIMI_BASE_URL")
+    kimi_base_url: str = Field(default="https://api.moonshot.cn/v1", alias="KIMI_BASE_URL")
     kimi_max_tokens: Optional[str] = Field(default=None, alias="KIMI_MAX_TOKENS")
 
 
@@ -51,7 +51,7 @@ class AppSettings(BaseSettings):
     # RAG
     chunk_size: int = Field(default=800, alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=120, alias="CHUNK_OVERLAP")
-    similarity_top_k: int = Field(default=20, alias="SIMILARITY_TOP_K")
+    similarity_top_k: int = Field(default=5, alias="SIMILARITY_TOP_K")
 
 
 

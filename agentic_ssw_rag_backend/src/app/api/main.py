@@ -1,68 +1,22 @@
 import os
 from datetime import date
 from pathlib import Path
-from typing import AsyncGenerator
 
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from llama_index.core.agent.workflow import AgentStream
 from llama_index.observability.otel import LlamaIndexOpenTelemetry
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
 from app.api.documents import router as documents_router
 from app.api.exceptions import register_exception_handlers
 from app.api.schemas import ChatRequest, QueryRequest, QueryResponse, SourceChunk
-from app.core.config import BASE_DIR, get_settings
-from app.utils.agent import build_agent, build_agent_workflow, build_graph_agent
-from app.utils.rag import query_knowledge_base
+from app.core.config import BASE_DIR
+from app.utils.agent import build_agent_workflow, build_graph_agent
+from app.utils.rag import query_knowledge_base, stream_knowledge_base
 
 
 router = APIRouter(prefix="/agent")
-settings = get_settings()
-
-
-def _final_answer_chunks(handler) -> AsyncGenerator[str, None]:
-    async def generate() -> AsyncGenerator[str, None]:
-        buffer = ""
-        answer_started = False
-        emitted = False
-
-        try:
-            async for event in handler.stream_events():
-                if not isinstance(event, AgentStream):
-                    continue
-
-                delta = event.delta or ""
-                if not delta:
-                    continue
-
-                if answer_started:
-                    emitted = True
-                    yield delta
-                    continue
-
-                buffer += delta
-                marker_index = buffer.find("Answer:")
-                if marker_index == -1:
-                    continue
-
-                answer_started = True
-                chunk = buffer[marker_index + len("Answer:") :].lstrip()
-                buffer = ""
-                if chunk:
-                    emitted = True
-                    yield chunk
-
-            result = await handler
-            if not emitted:
-                final_text = str(result).strip()
-                if final_text:
-                    yield final_text
-        except Exception as exc:
-            yield f"\n\n请求失败：{exc}"
-
-    return generate()
 
 
 @router.post("/rag", response_model=QueryResponse)
@@ -88,14 +42,12 @@ async def rag_query(req: QueryRequest):
 
 @router.post("/chat")
 async def agent_chat(req: ChatRequest):
-    agent = build_agent(
-        access_tags=tuple(req.access_tags),
-        top_k=req.top_k,
-    )
-    handler = agent.run(req.question)
-
     return StreamingResponse(
-        _final_answer_chunks(handler),
+        stream_knowledge_base(
+            question=req.question,
+            access_tags=req.access_tags,
+            top_k=req.top_k,
+        ),
         media_type="text/plain; charset=utf-8",
         headers={
             "Cache-Control": "no-cache",
@@ -159,7 +111,6 @@ def register_frontend(app: FastAPI) -> None:
 
 def create_app() -> FastAPI:
     app = FastAPI()
-    build_agent()
 
     register_exception_handlers(app)
     include_api_routes(app)

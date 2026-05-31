@@ -6,7 +6,7 @@ defineProps({
   },
   topK: {
     type: Number,
-    default: 20,
+    default: 5,
   },
 })
 

@@ -24,10 +24,14 @@ def build_moonshot_llm() -> OpenAI:
         model=settings.kimi_llm_model,
         api_key=settings.kimi_api_key,
         api_base=settings.kimi_base_url,
-        additional_kwargs={"thinking": False},
         is_chat_model=True,
         is_function_calling_model=True,
         max_tokens=settings.kimi_max_tokens,
-        temperature=1.0,
+        temperature=0.6,
+        additional_kwargs={
+            "extra_body": {
+                "thinking": {"type": "disabled"}
+            }
+        },
     )
 
