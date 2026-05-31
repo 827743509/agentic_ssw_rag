@@ -41,7 +41,11 @@ async function scrollToBottom() {
 }
 
 watch(
-  () => [props.messages.length, props.answering],
+  () => [
+    props.messages.length,
+    props.answering,
+    props.messages.at(-1)?.content,
+  ],
   () => {
     scrollToBottom()
   },

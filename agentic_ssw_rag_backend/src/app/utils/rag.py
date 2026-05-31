@@ -89,6 +89,19 @@ def build_query_engine(
     )
 
 
+def build_retriever(
+    access_tags: Optional[List[str]] = None,
+    top_k: Optional[int] = None,
+):
+    settings = get_settings()
+    index = build_index()
+    return index.as_retriever(
+        similarity_top_k=top_k or settings.similarity_top_k,
+        filters=build_metadata_filters(access_tags=access_tags),
+        vector_store_query_mode="hybrid",
+    )
+
+
 def query_knowledge_base(
     question: str,
     access_tags: Optional[List[str]] = None,
@@ -122,30 +135,49 @@ def stream_knowledge_base(
     access_tags: Optional[List[str]] = None,
     top_k: Optional[int] = None,
 ) -> Generator[str, None, None]:
+    yield "\n"
+
     try:
-        query_engine = build_query_engine(
+        retriever = build_retriever(
             access_tags=access_tags or [],
             top_k=top_k,
-            streaming=True,
         )
-        response = query_engine.query(question)
-        response_gen = getattr(response, "response_gen", None)
-        if response_gen is None:
-            text = str(response)
-            if text:
-                yield text
+        nodes = retriever.retrieve(question)
+
+        if not nodes:
+            yield "知识库中没有找到足够依据。"
             return
 
+        context_str = "\n\n".join(
+            node.node.get_content()
+            for node in nodes
+            if node.node.get_content()
+        )
+        if not context_str.strip():
+            yield "知识库中没有找到足够依据。"
+            return
+
+        prompt = QA_TEMPLATE.format(
+            context_str=context_str,
+            query_str=question,
+        )
+
+        llm = build_moonshot_llm()
         emitted = False
-        for chunk in response_gen:
+        final_text = ""
+        for response in llm.stream_complete(prompt):
+            chunk = getattr(response, "delta", None)
+            if chunk is None:
+                text = getattr(response, "text", "") or ""
+                chunk = text[len(final_text):] if text.startswith(final_text) else text
+                final_text = text
+
             if not chunk:
                 continue
             emitted = True
             yield chunk
 
         if not emitted:
-            text = str(response)
-            if text:
-                yield text
+            yield "未返回回答。"
     except Exception as exc:
         yield f"\n\n请求失败：{exc}"

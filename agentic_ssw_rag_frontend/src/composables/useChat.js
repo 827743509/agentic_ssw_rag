@@ -25,6 +25,9 @@ export function useChat({ topK, persistSettings, parseAccessTags }) {
           top_k: topK.value ? Number(topK.value) : null,
         },
         (chunk) => {
+          if (!messages.value[assistantIndex].content && !chunk.trim()) {
+            return
+          }
           messages.value[assistantIndex].content += chunk
         },
       )
